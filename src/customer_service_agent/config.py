@@ -1,0 +1,153 @@
+"""Application configuration loaded from environment variables."""
+
+from functools import lru_cache
+from pathlib import Path
+from typing import Literal
+
+from pydantic import Field, SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+class Settings(BaseSettings):
+    """Typed runtime configuration.
+
+    Relative data paths are always resolved from the project root, so CLI, API,
+    tests, and process managers behave consistently regardless of their cwd.
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=PROJECT_ROOT / ".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    app_name: str = "LangChain Customer Service Agent"
+    app_env: Literal["dev", "test", "prod"] = "dev"
+    company_name: str = "你的公司名称"
+    support_email: str = "support@example.com"
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+
+    # Chat and embedding providers are separated because they are often different services.
+    chat_api_key: SecretStr | None = None
+    chat_base_url: str | None = None
+    chat_model_name: str | None = None
+    embedding_api_key: SecretStr | None = None
+    embedding_base_url: str | None = None
+    embedding_model_name: str | None = None
+
+    # Backward-compatible OpenAI-style names. New deployments should prefer the fields above.
+    openai_api_key: SecretStr | None = None
+    openai_base_url: str | None = None
+    openai_model_name: str | None = None
+    openai_embedding_model_name: str | None = None
+
+    agent_temperature: float = Field(default=0.2, ge=0.0, le=2.0)
+    agent_verbose: bool = False
+    # multi 为新版协作系统；single 保留原版，便于学习和效果对照。
+    agent_mode: Literal["single", "multi"] = "multi"
+    multi_agent_max_concurrency: int = Field(default=3, ge=1, le=12)
+    multi_agent_task_timeout_seconds: float = Field(default=45.0, gt=0, le=300)
+    multi_agent_max_attempts: int = Field(default=2, ge=1, le=3)
+    supervisor_timeout_seconds: float = Field(default=45.0, gt=0, le=300)
+    agent_recursion_limit: int = Field(default=20, ge=4, le=100)
+    model_timeout_seconds: float = Field(default=60.0, gt=0, le=300)
+    model_max_retries: int = Field(default=2, ge=0, le=10)
+    embedding_check_ctx_length: bool = False
+
+    memory_db_path: Path = Path("data/agent_checkpoints.sqlite3")
+    # 两种图的状态结构不同，分别保存，避免旧 checkpoint 被新图误读。
+    multi_agent_db_path: Path = Path("data/multi_agent_checkpoints.sqlite3")
+    after_sales_db_path: Path = Path("data/after_sales.sqlite3")
+    profile_db_path: Path = Path("data/customer_profiles.sqlite3")
+    rag_db_path: Path = Path("data/rag_chunks.sqlite3")
+    ticket_db_path: Path = Path("data/tickets.sqlite3")
+    knowledge_base_dir: Path = Path("data/knowledge_base")
+    sqlite_busy_timeout_seconds: float = Field(default=30.0, gt=0, le=300)
+    memory_recent_turns: int = Field(default=6, ge=1, le=50)
+    memory_summary_enabled: bool = True
+    memory_summary_max_chars: int = Field(default=4000, ge=500, le=20_000)
+    memory_summary_input_max_chars: int = Field(default=20_000, ge=2000, le=100_000)
+
+    # RecursiveCharacterTextSplitter measures characters unless a token length function is set.
+    rag_chunk_size: int = Field(default=700, ge=100, le=10_000)
+    rag_chunk_overlap: int = Field(default=100, ge=0, le=2_000)
+    rag_top_k: int = Field(default=4, ge=1, le=20)
+    rag_min_score: float = Field(default=0.0, ge=-1.0, le=1.0)
+
+    api_host: str = "127.0.0.1"
+    api_port: int = Field(default=8000, ge=1, le=65_535)
+    admin_api_key: SecretStr | None = None
+
+    @property
+    def resolved_chat_api_key(self) -> SecretStr | None:
+        return self.chat_api_key or self.openai_api_key
+
+    @property
+    def resolved_chat_base_url(self) -> str | None:
+        return self.chat_base_url or self.openai_base_url
+
+    @property
+    def resolved_chat_model_name(self) -> str | None:
+        return self.chat_model_name or self.openai_model_name
+
+    @property
+    def resolved_embedding_api_key(self) -> SecretStr | None:
+        return self.embedding_api_key or self.openai_api_key
+
+    @property
+    def resolved_embedding_base_url(self) -> str | None:
+        return self.embedding_base_url or self.openai_base_url
+
+    @property
+    def resolved_embedding_model_name(self) -> str | None:
+        return self.embedding_model_name or self.openai_embedding_model_name
+
+    def resolve_path(self, path: Path) -> Path:
+        return path if path.is_absolute() else PROJECT_ROOT / path
+
+    @property
+    def memory_db_file(self) -> Path:
+        return self.resolve_path(self.memory_db_path)
+
+    @property
+    def multi_agent_db_file(self) -> Path:
+        return self.resolve_path(self.multi_agent_db_path)
+
+    @property
+    def after_sales_db_file(self) -> Path:
+        return self.resolve_path(self.after_sales_db_path)
+
+    @property
+    def rag_db_file(self) -> Path:
+        return self.resolve_path(self.rag_db_path)
+
+    @property
+    def profile_db_file(self) -> Path:
+        return self.resolve_path(self.profile_db_path)
+
+    @property
+    def ticket_db_file(self) -> Path:
+        return self.resolve_path(self.ticket_db_path)
+
+    @property
+    def knowledge_base_path(self) -> Path:
+        return self.resolve_path(self.knowledge_base_dir)
+
+    def ensure_local_dirs(self) -> None:
+        self.memory_db_file.parent.mkdir(parents=True, exist_ok=True)
+        self.multi_agent_db_file.parent.mkdir(parents=True, exist_ok=True)
+        self.after_sales_db_file.parent.mkdir(parents=True, exist_ok=True)
+        self.profile_db_file.parent.mkdir(parents=True, exist_ok=True)
+        self.rag_db_file.parent.mkdir(parents=True, exist_ok=True)
+        self.ticket_db_file.parent.mkdir(parents=True, exist_ok=True)
+        self.knowledge_base_path.mkdir(parents=True, exist_ok=True)
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    settings = Settings()
+    settings.ensure_local_dirs()
+    return settings
