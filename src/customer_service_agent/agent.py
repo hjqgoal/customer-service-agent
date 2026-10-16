@@ -18,7 +18,7 @@ from customer_service_agent.memory import (
     CustomerProfileRepository,
     SQLiteAgentCheckpointer,
 )
-from customer_service_agent.model_factory import build_chat_model, build_embedding_model
+from customer_service_agent.model_factory import build_chat_model
 from customer_service_agent.models import AgentStep, ChatResponse
 from customer_service_agent.prompts import build_system_prompt
 from customer_service_agent.rag.service import RAGService
@@ -120,6 +120,7 @@ class CustomerServiceAgent:
         checkpointer: SQLiteAgentCheckpointer,              #保存会话线程状态，短期记忆
         profile_repository: CustomerProfileRepository,      #保存长期客户画像，长期
         compactor: ConversationCompactor,                   #压缩长聊天历史
+        rag_service: RAGService | None = None,
     ) -> None:
         self.settings = settings
         self.llm = llm
@@ -127,6 +128,7 @@ class CustomerServiceAgent:
         self.checkpointer = checkpointer
         self.profile_repository = profile_repository
         self.compactor = compactor
+        self.rag_service = rag_service
         # 固定数量的锁避免长期运行时为每个 session 永久保留一个 Lock。
         # 相同 session 一定落到同一把锁；少量不同 session 冲突只会短暂串行。
         self._session_locks = tuple(threading.Lock() for _ in range(_SESSION_LOCK_STRIPES))
@@ -198,6 +200,8 @@ class CustomerServiceAgent:
 
     def close(self) -> None:
         self.checkpointer.close()
+        if self.rag_service is not None:
+            self.rag_service.close()
     '''
     关闭 Checkpointer 持有的资源，通常包括：
     * SQLite 数据库连接
@@ -229,7 +233,7 @@ def build_customer_service_agent(
     )
 
     if tools is None:       #不能如上写成 tools = tools or None，因为这会代表创建一个没tool的agent
-        rag_service = RAGService(settings, build_embedding_model(settings))
+        rag_service = RAGService.from_settings(settings)
         agent_tools = build_tools(settings, rag_service, customer_profiles)
     else:
         agent_tools = tools
@@ -252,6 +256,7 @@ def build_customer_service_agent(
         checkpointer,
         customer_profiles,
         compactor,
+        rag_service=rag_service if tools is None else None,
     )
 
 """

@@ -1,0 +1,352 @@
+{
+  "synthetic": true,
+  "snapshot": "2026-10-16T12:00:00+08:00",
+  "policies": [
+    {
+      "id": "LAB-P01",
+      "title": "普通商品七天无理由退货"
+    },
+    {
+      "id": "LAB-P02",
+      "title": "退货退款办理与到账"
+    },
+    {
+      "id": "LAB-P03",
+      "title": "定制商品与未发货取消"
+    },
+    {
+      "id": "LAB-P04",
+      "title": "质量问题与破损错发"
+    },
+    {
+      "id": "LAB-P05",
+      "title": "发货时效与预售"
+    },
+    {
+      "id": "LAB-P06",
+      "title": "配送延误与物流停滞"
+    },
+    {
+      "id": "LAB-P07",
+      "title": "显示签收但未收到"
+    },
+    {
+      "id": "LAB-P08",
+      "title": "运费与退货运费"
+    },
+    {
+      "id": "LAB-P09",
+      "title": "电子发票"
+    },
+    {
+      "id": "LAB-P10",
+      "title": "优惠券与会员积分"
+    },
+    {
+      "id": "LAB-P11",
+      "title": "地址修改与隐私核验"
+    },
+    {
+      "id": "LAB-P12",
+      "title": "人工客服与服务偏好"
+    }
+  ],
+  "orders": [
+    {
+      "order_id": "LAB-ORDER-1001",
+      "customer_id": "LAB-USER-01",
+      "product": "轻便双肩包",
+      "amount_fen": 12900,
+      "paid": true,
+      "status": "已发货",
+      "signed_date": null,
+      "condition": "未签收",
+      "tracking_number": "LAB-TRACK-1001",
+      "next_step": "预计10月18日送达，仅为估计",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true,
+      "logistics_events": "2026-10-14 09:00 商家交寄；2026-10-15 18:00 到达星舟模拟中转站；2026-10-16 08:30 离开中转站。"
+    },
+    {
+      "order_id": "LAB-ORDER-1002",
+      "customer_id": "LAB-USER-01",
+      "product": "陶瓷马克杯",
+      "amount_fen": 5900,
+      "paid": true,
+      "status": "已签收",
+      "signed_date": "2026-10-13",
+      "condition": "未使用，包装配件完整",
+      "tracking_number": "LAB-TRACK-1002",
+      "next_step": "签收3天，可按P01申请，仍需审核",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true,
+      "logistics_events": "2026-10-13 10:30 本人签收；截至快照无后续运输节点。"
+    },
+    {
+      "order_id": "LAB-ORDER-1003",
+      "customer_id": "LAB-USER-01",
+      "product": "折叠收纳箱",
+      "amount_fen": 8900,
+      "paid": true,
+      "status": "已签收",
+      "signed_date": "2026-10-09",
+      "condition": "未使用，包装配件完整",
+      "tracking_number": "LAB-TRACK-1003",
+      "next_step": "签收第7天，处于P01边界内",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true,
+      "logistics_events": "2026-10-09 10:30 本人签收；截至快照无后续运输节点。"
+    },
+    {
+      "order_id": "LAB-ORDER-1004",
+      "customer_id": "LAB-USER-01",
+      "product": "棉麻桌布",
+      "amount_fen": 7900,
+      "paid": true,
+      "status": "已签收",
+      "signed_date": "2026-10-08",
+      "condition": "未使用，包装完整，无质量问题",
+      "tracking_number": "LAB-TRACK-1004",
+      "next_step": "签收第8天，超出P01无理由窗口",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true,
+      "logistics_events": "2026-10-08 10:30 本人签收；截至快照无后续运输节点。"
+    },
+    {
+      "order_id": "LAB-ORDER-1005",
+      "customer_id": "LAB-USER-02",
+      "product": "定制刻字保温杯",
+      "amount_fen": 15900,
+      "paid": true,
+      "status": "已签收",
+      "signed_date": "2026-10-14",
+      "condition": "定制文字正确，无质量问题",
+      "tracking_number": "LAB-TRACK-1005",
+      "next_step": "定制商品适用P03，不适用普通无理由规则",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true,
+      "logistics_events": "2026-10-14 10:30 本人签收；截至快照无后续运输节点。"
+    },
+    {
+      "order_id": "LAB-ORDER-1006",
+      "customer_id": "LAB-USER-02",
+      "product": "玻璃保鲜盒",
+      "amount_fen": 9900,
+      "paid": true,
+      "status": "已签收",
+      "signed_date": "2026-10-15",
+      "condition": "开箱发现杯盖破损，用户有照片",
+      "tracking_number": "LAB-TRACK-1006",
+      "next_step": "按P04核验破损情况，不自动承诺退款",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true,
+      "logistics_events": "2026-10-15 10:30 本人签收；截至快照无后续运输节点。"
+    },
+    {
+      "order_id": "LAB-ORDER-1007",
+      "customer_id": "LAB-USER-02",
+      "product": "旅行收纳袋",
+      "amount_fen": 6900,
+      "paid": true,
+      "status": "已发货",
+      "signed_date": null,
+      "condition": "未签收",
+      "tracking_number": "LAB-TRACK-1007",
+      "next_step": "暴雨导致中转延误，尚无可靠送达日期",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true,
+      "logistics_events": "2026-10-12 09:00 商家交寄；2026-10-14 07:30 中转站反馈暴雨道路受阻；2026-10-16 09:00 延误仍未解除。"
+    },
+    {
+      "order_id": "LAB-ORDER-1008",
+      "customer_id": "LAB-USER-02",
+      "product": "桌面阅读灯",
+      "amount_fen": 18900,
+      "paid": true,
+      "status": "已发货",
+      "signed_date": null,
+      "condition": "未签收",
+      "tracking_number": "LAB-TRACK-1008",
+      "next_step": "10月13日08:00后无新轨迹，超过48小时可核查",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true,
+      "logistics_events": "2026-10-12 16:00 已揽收；2026-10-13 08:00 到达模拟中转站；此后至快照无更新。"
+    },
+    {
+      "order_id": "LAB-ORDER-1009",
+      "customer_id": "LAB-USER-03",
+      "product": "不锈钢餐具",
+      "amount_fen": 9900,
+      "paid": true,
+      "status": "已签收",
+      "signed_date": "2026-10-16",
+      "condition": "系统显示签收但用户未收到",
+      "tracking_number": "LAB-TRACK-1009",
+      "next_step": "先核实代收点及签收凭证，不能断言丢件",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true,
+      "logistics_events": "2026-10-16 10:20 系统显示驿站代收；2026-10-16 11:00 用户反馈未找到包裹，尚待核查。"
+    },
+    {
+      "order_id": "LAB-ORDER-1010",
+      "customer_id": "LAB-USER-03",
+      "product": "竹纤维毛巾",
+      "amount_fen": 4900,
+      "paid": true,
+      "status": "派送中",
+      "signed_date": null,
+      "condition": "未签收",
+      "tracking_number": "LAB-TRACK-1010",
+      "next_step": "配送员正在派件，具体时间未确认",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true,
+      "logistics_events": "2026-10-15 19:00 到达派送站；2026-10-16 08:40 出站派送。"
+    },
+    {
+      "order_id": "LAB-ORDER-1011",
+      "customer_id": "LAB-USER-03",
+      "product": "便携雨伞",
+      "amount_fen": 8900,
+      "paid": true,
+      "status": "退款处理中",
+      "signed_date": "2026-10-05",
+      "condition": "退回商品已到仓，等待验收",
+      "tracking_number": "LAB-TRACK-1011",
+      "next_step": "10月15日退仓，按P02验收后处理",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true,
+      "logistics_events": "2026-10-12 15:00 用户寄回；2026-10-15 10:00 退货仓库签收，尚未完成验收。"
+    },
+    {
+      "order_id": "LAB-ORDER-1012",
+      "customer_id": "LAB-USER-03",
+      "product": "厨房电子秤",
+      "amount_fen": 7900,
+      "paid": true,
+      "status": "换货处理中",
+      "signed_date": "2026-10-10",
+      "condition": "称重功能故障，换货审核已通过",
+      "tracking_number": "LAB-TRACK-1012",
+      "next_step": "新件10月15日出库，预计10月18日到达",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true,
+      "logistics_events": "2026-10-14 14:00 原故障品验收完成；2026-10-15 09:00 换货新件发出；2026-10-16 07:00 新件到达中转站。"
+    },
+    {
+      "order_id": "LAB-ORDER-1013",
+      "customer_id": "LAB-USER-04",
+      "product": "绒面抱枕",
+      "amount_fen": 11900,
+      "paid": true,
+      "status": "已退款",
+      "signed_date": "2026-10-03",
+      "condition": "退货验收通过",
+      "tracking_number": "LAB-TRACK-1013",
+      "next_step": "10月14日已发起原路退款119元，实际到账未核实",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true,
+      "logistics_events": "2026-10-10 10:00 退货仓库签收；2026-10-12 15:00 验收通过；2026-10-14 发起原路退款，银行到账状态未知。"
+    },
+    {
+      "order_id": "LAB-ORDER-1014",
+      "customer_id": "LAB-USER-04",
+      "product": "多功能笔筒",
+      "amount_fen": 3900,
+      "paid": true,
+      "status": "已发货",
+      "signed_date": null,
+      "condition": "未签收",
+      "tracking_number": "LAB-TRACK-1014",
+      "next_step": "10月16日申请修改配送点，尚未确认成功",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true,
+      "logistics_events": "2026-10-15 11:00 揽收；2026-10-16 09:00 改派申请受理，尚待承运商确认。"
+    },
+    {
+      "order_id": "LAB-ORDER-1015",
+      "customer_id": "LAB-USER-04",
+      "product": "USB桌面风扇",
+      "amount_fen": 10900,
+      "paid": true,
+      "status": "已签收",
+      "signed_date": "2026-10-12",
+      "condition": "缺少USB线，已登记补发",
+      "tracking_number": "LAB-TRACK-1015",
+      "next_step": "配件10月16日发出，预计10月19日送达",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true,
+      "logistics_events": "2026-10-12 主商品签收；2026-10-15 确认缺少USB线；2026-10-16 09:30 补发线缆交寄。此运单为补发件。"
+    },
+    {
+      "order_id": "LAB-ORDER-1016",
+      "customer_id": "LAB-USER-04",
+      "product": "双层鞋架",
+      "amount_fen": 14900,
+      "paid": true,
+      "status": "已发货",
+      "signed_date": null,
+      "condition": "未签收",
+      "tracking_number": "LAB-TRACK-1016",
+      "next_step": "10月16日10:00揽收，预计10月19日送达",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true,
+      "logistics_events": "2026-10-16 09:00 商家出库；2026-10-16 10:00 承运商揽收。"
+    },
+    {
+      "order_id": "LAB-ORDER-1017",
+      "customer_id": "LAB-USER-05",
+      "product": "纯色帆布袋",
+      "amount_fen": 3900,
+      "paid": false,
+      "status": "待付款",
+      "signed_date": null,
+      "condition": "未出库",
+      "tracking_number": null,
+      "next_step": "未支付，不发货，可取消",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true
+    },
+    {
+      "order_id": "LAB-ORDER-1018",
+      "customer_id": "LAB-USER-05",
+      "product": "硅胶餐垫",
+      "amount_fen": 5900,
+      "paid": true,
+      "status": "待发货",
+      "signed_date": null,
+      "condition": "已支付，等待仓库出库",
+      "tracking_number": null,
+      "next_step": "10月16日08:00支付，预计24小时内安排出库",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true
+    },
+    {
+      "order_id": "LAB-ORDER-1019",
+      "customer_id": "LAB-USER-05",
+      "product": "预售旅行箱",
+      "amount_fen": 39900,
+      "paid": true,
+      "status": "预售待发货",
+      "signed_date": null,
+      "condition": "已支付，预售商品",
+      "tracking_number": null,
+      "next_step": "约定10月20日发货，不是10月20日送达",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true
+    },
+    {
+      "order_id": "LAB-ORDER-1020",
+      "customer_id": "LAB-USER-05",
+      "product": "棉质眼罩",
+      "amount_fen": 2900,
+      "paid": false,
+      "status": "已取消",
+      "signed_date": null,
+      "condition": "未支付，订单已取消",
+      "tracking_number": null,
+      "next_step": "无需退款，不产生物流",
+      "snapshot": "2026-10-16T12:00:00+08:00",
+      "synthetic": true
+    }
+  ]
+}

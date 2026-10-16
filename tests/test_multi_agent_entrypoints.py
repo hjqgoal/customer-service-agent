@@ -60,7 +60,11 @@ def test_mcp_wrapper_uses_multi_agent_and_returns_answer(test_settings, monkeypa
     monkeypatch.setitem(sys.modules, "mcp.server.fastmcp", module)
     monkeypatch.setattr(mcp_server, "get_settings", lambda: settings)
     monkeypatch.setattr(mcp_server, "build_customer_service_agent", lambda _: agent)
-    monkeypatch.setattr(mcp_server, "build_embedding_model", lambda _: FakeEmbeddings())
+    monkeypatch.setattr(
+        mcp_server.RAGService,
+        "from_settings",
+        classmethod(lambda cls, settings: cls(settings, FakeEmbeddings())),
+    )
     mcp_server.main()
     assert responses == ["已汇总演示查询结果。"]
     assert "search_customer_knowledge_base" in tools

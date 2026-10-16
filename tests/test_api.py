@@ -8,7 +8,7 @@ from tests.fakes import FakeToolCallingChatModel
 
 
 class FailingRAGService:
-    def search(self, query: str, *, top_k: int):
+    def retrieve(self, query: str, *, top_k: int, force_web: bool = False):
         raise ValueError("bad query")
 
 

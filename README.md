@@ -95,6 +95,10 @@ pre-commit install
 
 ## RAG
 
+已准备12条规则、20笔订单、16份物流的模拟业务知识，并完成真实向量入库及跨会话记忆验证。
+直接测试请看 [业务知识库与长期记忆实测](docs/business-lab.md)。这套实验使用独立的
+`python -m examples.business_lab` 入口，避免与旧固定演示订单工具混淆。
+
 先构建索引：
 
 ```bash
@@ -114,7 +118,12 @@ python -m customer_service_agent.cli rag-ingest --path data/knowledge_base --app
 python -m customer_service_agent.cli rag-search "退款规则"
 ```
 
-当前 SQLite 向量检索是 O(n) 教学实现。大知识库请替换为 pgvector、Qdrant 或 Milvus。
+检索现在并行执行中文关键词BM25与向量检索，每路默认Top3；工具把两组候选交给聊天模型
+判断相关性、冲突和引用。本地无结果、检索异常，或显式使用`--force-web`时，通过浏览器MCP
+查询公开搜索页。浏览器配置和学习顺序见[混合RAG说明](docs/hybrid-rag.md)。
+
+SQLite向量检索仍是O(n)教学实现，关键词由FTS5倒排索引排序。首次打开旧库会补建关键词
+索引，保留原chunk及向量；大知识库请替换为pgvector、Qdrant或Milvus。
 
 ## Agent CLI
 

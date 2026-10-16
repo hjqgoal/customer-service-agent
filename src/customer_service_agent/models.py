@@ -87,7 +87,10 @@ class RAGIngestResponse(BaseModel):
 
 class RAGSearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
-    top_k: int = Field(default=4, ge=1, le=20)
+    top_k: int = Field(
+        default=3, ge=1, le=20, description="每路候选数量，上限由RAG_BRANCH_TOP_K控制"
+    )
+    force_web: bool = Field(default=False, description="本地候选不足以回答时，显式尝试网页降级")
 
 
 class RAGHit(BaseModel):
@@ -99,3 +102,9 @@ class RAGHit(BaseModel):
 class RAGSearchResponse(BaseModel):
     query: str
     hits: list[RAGHit]
+    # 保留分组和原始分数，避免把BM25与余弦相似度当成同一标尺。
+    keyword_hits: list[RAGHit] = Field(default_factory=list)
+    semantic_hits: list[RAGHit] = Field(default_factory=list)
+    web_hits: list[RAGHit] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    web_attempted: bool = False

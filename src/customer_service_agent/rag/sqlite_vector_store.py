@@ -11,6 +11,7 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
 from customer_service_agent.infrastructure.sqlite import sqlite_connection
+from customer_service_agent.rag.tokenizer import match_expression, tokenize
 
 
 class RAGIndexError(RuntimeError):
@@ -45,7 +46,7 @@ class SQLiteVectorStore:
     def __init__(
         self,
         db_path: str | Path,
-        embeddings: Embeddings,
+        embeddings: Embeddings | None,
         *,
         busy_timeout_seconds: float = 30.0,
     ) -> None:
@@ -94,6 +95,30 @@ class SQLiteVectorStore:
                 )
                 """
             )
+            # 与向量共用chunk ID；首次打开旧库只补关键词索引，不重算向量。
+            connection.execute(
+                "CREATE VIRTUAL TABLE IF NOT EXISTS rag_keyword_chunks USING fts5(tokens)"
+            )
+            connection.execute("""
+                CREATE TRIGGER IF NOT EXISTS rag_keyword_delete AFTER DELETE ON rag_chunks
+                BEGIN DELETE FROM rag_keyword_chunks WHERE rowid = old.id; END
+            """)
+            connection.execute("""
+                CREATE TRIGGER IF NOT EXISTS rag_keyword_update AFTER UPDATE ON rag_chunks
+                BEGIN DELETE FROM rag_keyword_chunks WHERE rowid = old.id; END
+            """)
+            self._sync_keyword_index(connection)
+
+    @staticmethod
+    def _sync_keyword_index(connection) -> None:
+        rows = connection.execute("""
+            SELECT c.id, c.content FROM rag_chunks AS c
+            LEFT JOIN rag_keyword_chunks AS k ON k.rowid = c.id WHERE k.rowid IS NULL
+        """).fetchall()
+        connection.executemany(
+            "INSERT INTO rag_keyword_chunks(rowid, tokens) VALUES (?, ?)",
+            [(chunk_id, " ".join(tokenize(content))) for chunk_id, content in rows],
+        )
 
     @staticmethod
     def _content_hash(document: Document) -> str:
@@ -108,6 +133,8 @@ class SQLiteVectorStore:
     def _prepare_rows(self, documents: list[Document]) -> list[tuple[str, str, str, str]]:
         if not documents:
             return []
+        if self.embeddings is None:
+            raise RAGIndexError("Embedding未配置，无法构建向量索引；请先填写EMBEDDING_*。")
         vectors = self.embeddings.embed_documents([document.page_content for document in documents])
         if len(vectors) != len(documents):
             raise RAGIndexError("Embedding 服务返回的向量数量与文档数量不一致。")
@@ -163,6 +190,7 @@ class SQLiteVectorStore:
                 rows,
             )
             self._write_index_metadata(connection, rows)
+            self._sync_keyword_index(connection)
             after = int(connection.execute("SELECT COUNT(*) FROM rag_chunks").fetchone()[0])
             return after - before
 
@@ -183,7 +211,36 @@ class SQLiteVectorStore:
                 rows,
             )
             self._write_index_metadata(connection, rows)
+            self._sync_keyword_index(connection)
         return len(rows)
+
+    def keyword_search(self, query: str, *, top_k: int = 3) -> list[VectorSearchHit]:
+        if not query.strip() or not 1 <= top_k <= 20:
+            raise ValueError("查询不能为空，top_k必须为1到20。")
+        expression = match_expression(query)
+        if not expression:
+            return []
+        with self._connection() as connection:
+            self._sync_keyword_index(connection)
+            rows = connection.execute(
+                """
+                SELECT c.id, c.content, c.metadata_json, bm25(rag_keyword_chunks)
+                FROM rag_keyword_chunks JOIN rag_chunks AS c
+                ON c.id = rag_keyword_chunks.rowid
+                WHERE rag_keyword_chunks MATCH ?
+                ORDER BY bm25(rag_keyword_chunks), c.id LIMIT ?
+            """,
+                (expression, top_k),
+            ).fetchall()
+        # SQLite BM25越小越好且通常为负；取负号便于展示，不能与余弦分数比较。
+        return [
+            VectorSearchHit(
+                content=content,
+                score=-rank,
+                metadata={**json.loads(metadata), "chunk_id": chunk_id},
+            )
+            for chunk_id, content, metadata, rank in rows
+        ]
 
     def similarity_search(
         self,
@@ -200,16 +257,17 @@ class SQLiteVectorStore:
 
         with self._connection() as connection:
             rows = connection.execute(
-                "SELECT content, metadata_json, embedding_json FROM rag_chunks"
+                "SELECT id, content, metadata_json, embedding_json FROM rag_chunks"
             ).fetchall()
             dimension_row = connection.execute(
                 "SELECT value FROM rag_index_metadata WHERE key = 'vector_dimension'"
             ).fetchone()
         if not rows:
             return []
-
+        if self.embeddings is None:
+            raise RAGIndexError("Embedding未配置，语义检索不可用。")
         query_vector = self.embeddings.embed_query(normalized_query)
-        expected_dimension = int(dimension_row[0]) if dimension_row else len(json.loads(rows[0][2]))
+        expected_dimension = int(dimension_row[0]) if dimension_row else len(json.loads(rows[0][3]))
         if len(query_vector) != expected_dimension:
             raise RAGIndexError(
                 "当前 embedding 模型的向量维度与已有索引不一致，请重新执行 rag-ingest。"
@@ -219,9 +277,9 @@ class SQLiteVectorStore:
             VectorSearchHit(
                 content=content,
                 score=cosine_similarity(query_vector, json.loads(embedding_json)),
-                metadata=json.loads(metadata_json),
+                metadata={**json.loads(metadata_json), "chunk_id": chunk_id},
             )
-            for content, metadata_json, embedding_json in rows
+            for chunk_id, content, metadata_json, embedding_json in rows
         ]
         return [
             hit
