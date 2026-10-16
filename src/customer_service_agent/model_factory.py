@@ -5,12 +5,15 @@
 2. 业务代码只依赖 LangChain 的接口，不关心底层供应商细节。
 """
 
+from urllib.parse import urlsplit
+
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pydantic import SecretStr
 
 from customer_service_agent.config import Settings
+from customer_service_agent.infrastructure.dashscope_embeddings import DashScopeTextEmbeddings
 
 
 class ModelConfigError(RuntimeError):
@@ -74,6 +77,22 @@ def build_chat_model(settings: Settings) -> BaseChatModel:
 
 def build_embedding_model(settings: Settings) -> Embeddings:
     """创建 embedding 模型，用于 RAG 文档向量化和查询向量化。"""
+
+    if (
+        settings.resolved_embedding_model_name == "qwen3-vl-embedding"
+        and urlsplit(settings.resolved_embedding_base_url or "").hostname
+        == "dashscope.aliyuncs.com"
+    ):
+        key = _secret_value(
+            settings.resolved_embedding_api_key,
+            env_name="EMBEDDING_API_KEY",
+            purpose="Embedding 模型",
+        )
+        return DashScopeTextEmbeddings(
+            SecretStr(key),
+            timeout=settings.model_timeout_seconds,
+            max_retries=settings.model_max_retries,
+        )
 
     return OpenAIEmbeddings(
         model=_plain_value(

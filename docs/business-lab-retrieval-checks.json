@@ -1,0 +1,104 @@
+[
+  {
+    "query": "LAB-ORDER-1008 的物流为什么停了？",
+    "expected_source": "business_lab/logistics/LAB-TRACK-1008.md",
+    "keyword_sources": [
+      "business_lab/logistics/LAB-TRACK-1008.md",
+      "business_lab/orders/LAB-ORDER-1008.md",
+      "business_lab/logistics/LAB-TRACK-1003.md"
+    ],
+    "semantic_sources": [
+      "business_lab/logistics/LAB-TRACK-1008.md",
+      "business_lab/logistics/LAB-TRACK-1010.md",
+      "business_lab/logistics/LAB-TRACK-1007.md"
+    ],
+    "warnings": [],
+    "web_attempted": false,
+    "passed": true
+  },
+  {
+    "query": "普通商品签收第七天和第八天能不能无理由退货？",
+    "expected_source": "business_lab/policies/P01.md",
+    "keyword_sources": [
+      "business_lab/policies/P01.md",
+      "business_lab/policies/P03.md",
+      "data/knowledge_base/example_faq.md"
+    ],
+    "semantic_sources": [
+      "business_lab/policies/P01.md",
+      "business_lab/orders/LAB-ORDER-1004.md",
+      "business_lab/orders/LAB-ORDER-1003.md"
+    ],
+    "warnings": [],
+    "web_attempted": false,
+    "passed": true
+  },
+  {
+    "query": "定制刻字杯没有质量问题能七天无理由退款吗？",
+    "expected_source": "business_lab/policies/P03.md",
+    "keyword_sources": [
+      "business_lab/policies/P03.md",
+      "business_lab/policies/P01.md",
+      "business_lab/orders/LAB-ORDER-1005.md"
+    ],
+    "semantic_sources": [
+      "business_lab/orders/LAB-ORDER-1005.md",
+      "business_lab/policies/P03.md",
+      "business_lab/orders/LAB-ORDER-1002.md"
+    ],
+    "warnings": [],
+    "web_attempted": false,
+    "passed": true
+  },
+  {
+    "query": "LAB-TRACK-1009 显示签收但没收到",
+    "expected_source": "business_lab/logistics/LAB-TRACK-1009.md",
+    "keyword_sources": [
+      "business_lab/orders/LAB-ORDER-1009.md",
+      "business_lab/logistics/LAB-TRACK-1009.md",
+      "business_lab/policies/P07.md"
+    ],
+    "semantic_sources": [
+      "business_lab/logistics/LAB-TRACK-1009.md",
+      "business_lab/policies/P07.md",
+      "business_lab/logistics/LAB-TRACK-1003.md"
+    ],
+    "warnings": [],
+    "web_attempted": false,
+    "passed": true
+  },
+  {
+    "query": "LAB-ORDER-1019 是10月20日发货还是送到？",
+    "expected_source": "business_lab/orders/LAB-ORDER-1019.md",
+    "keyword_sources": [
+      "business_lab/orders/LAB-ORDER-1019.md",
+      "business_lab/policies/P05.md",
+      "business_lab/logistics/LAB-TRACK-1009.md"
+    ],
+    "semantic_sources": [
+      "business_lab/logistics/LAB-TRACK-1010.md",
+      "business_lab/logistics/LAB-TRACK-1016.md",
+      "business_lab/orders/LAB-ORDER-1019.md"
+    ],
+    "warnings": [],
+    "web_attempted": false,
+    "passed": true
+  },
+  {
+    "query": "优惠券能和积分一起使用吗？",
+    "expected_source": "business_lab/policies/P10.md",
+    "keyword_sources": [
+      "business_lab/policies/P10.md",
+      "business_lab/policies/P12.md",
+      "business_lab/policies/P01.md"
+    ],
+    "semantic_sources": [
+      "business_lab/policies/P10.md",
+      "business_lab/policies/P08.md",
+      "business_lab/policies/P09.md"
+    ],
+    "warnings": [],
+    "web_attempted": false,
+    "passed": true
+  }
+]

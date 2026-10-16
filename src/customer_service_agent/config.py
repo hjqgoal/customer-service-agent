@@ -74,8 +74,25 @@ class Settings(BaseSettings):
     # RecursiveCharacterTextSplitter measures characters unless a token length function is set.
     rag_chunk_size: int = Field(default=700, ge=100, le=10_000)
     rag_chunk_overlap: int = Field(default=100, ge=0, le=2_000)
-    rag_top_k: int = Field(default=4, ge=1, le=20)
+    rag_top_k: int = Field(default=3, ge=1, le=20)
     rag_min_score: float = Field(default=0.0, ge=-1.0, le=1.0)
+    # 默认关键词3条 + 语义3条，交给聊天模型判断证据。
+    rag_branch_top_k: int = Field(default=3, ge=1, le=10)
+    rag_semantic_min_score: float = Field(default=0.35, ge=-1.0, le=1.0)
+    rag_local_timeout_seconds: float = Field(default=15.0, gt=0, le=120)
+    rag_retrieval_workers: int = Field(default=4, ge=2, le=16)
+    rag_web_fallback_enabled: bool = True
+    rag_web_mcp_transport: Literal["stdio", "streamable_http"] = "stdio"
+    rag_web_mcp_command: str | None = "npx"
+    rag_web_mcp_args: list[str] = Field(
+        default_factory=lambda: ["-y", "@playwright/mcp@0.0.83", "--headless", "--isolated"]
+    )
+    rag_web_mcp_cache_dir: Path = Path("data/mcp_npm_cache")
+    rag_web_mcp_url: str | None = None
+    rag_web_mcp_token: SecretStr | None = None
+    rag_web_search_url: str = "https://www.bing.com/search"
+    rag_web_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
+    rag_web_max_chars: int = Field(default=12_000, ge=1000, le=30_000)
 
     api_host: str = "127.0.0.1"
     api_port: int = Field(default=8000, ge=1, le=65_535)

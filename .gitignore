@@ -15,3 +15,4 @@ data/*.sqlite3-*
 dist/
 build/
 *.egg-info/
+data/mcp_npm_cache/

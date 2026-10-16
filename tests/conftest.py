@@ -24,6 +24,7 @@ def test_settings(tmp_path) -> Settings:
         after_sales_db_path=tmp_path / "after_sales.sqlite3",
         profile_db_path=tmp_path / "profiles.sqlite3",
         rag_db_path=tmp_path / "rag.sqlite3",
+        rag_web_mcp_command=None,  # 普通单元测试不启动真实浏览器；协议测试显式注入MCP。
         ticket_db_path=tmp_path / "tickets.sqlite3",
         knowledge_base_dir=kb_dir,
         agent_verbose=False,

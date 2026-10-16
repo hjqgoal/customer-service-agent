@@ -19,7 +19,7 @@ from customer_service_agent.agent import CustomerServiceAgent, build_customer_se
 from customer_service_agent.config import Settings, get_settings
 from customer_service_agent.logging_config import configure_logging
 from customer_service_agent.memory import CustomerProfile
-from customer_service_agent.model_factory import ModelConfigError, build_embedding_model
+from customer_service_agent.model_factory import ModelConfigError
 from customer_service_agent.models import (
     ChatRequest,
     ChatResponse,
@@ -38,6 +38,7 @@ from customer_service_agent.multi_agent.request_store import (
 from customer_service_agent.multi_agent.service import MultiAgentCustomerService
 from customer_service_agent.rag.service import RAGService
 from customer_service_agent.rag.sqlite_vector_store import RAGIndexError
+from starlette.concurrency import run_in_threadpool
 
 logger = logging.getLogger(__name__)
 AgentService = CustomerServiceAgent | MultiAgentCustomerService
@@ -51,7 +52,7 @@ def get_rag_service() -> RAGService:
     with _service_lock:
         if _rag_service is None:
             settings = get_settings()
-            _rag_service = RAGService(settings, build_embedding_model(settings))
+            _rag_service = RAGService.from_settings(settings)
         return _rag_service
 
 
@@ -69,6 +70,8 @@ def close_runtime_services() -> None:
         if _agent is not None:
             _agent.close()
         _agent = None
+        if _rag_service is not None:
+            _rag_service.close()
         _rag_service = None
 
 
@@ -217,6 +220,21 @@ async def chat(
     http_request: Request,
     agent: Annotated[AgentService, Depends(get_agent)],
 ) -> ChatResponse:
+    if isinstance(agent, CustomerServiceAgent):
+        response = await run_in_threadpool(
+            agent.ask,
+            request.message,
+            session_id=request.session_id,
+            user_id=request.user_id,
+            include_trace=False,
+        )
+        return response.model_copy(
+            update={
+                "request_id": request.request_id
+                or http_request.state.request_id
+            }
+        )  
+
     return await agent.aask(
         request.message,
         session_id=request.session_id,
@@ -277,8 +295,7 @@ def rag_search(
     request: RAGSearchRequest,
     rag_service: Annotated[RAGService, Depends(get_rag_service)],
 ) -> RAGSearchResponse:
-    hits = rag_service.search(request.query, top_k=request.top_k)
-    return RAGSearchResponse(query=request.query, hits=hits)
+    return rag_service.retrieve(request.query, top_k=request.top_k, force_web=request.force_web)
 
 
 def run() -> None:

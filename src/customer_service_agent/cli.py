@@ -9,7 +9,6 @@ import uvicorn
 from customer_service_agent.agent import build_customer_service_agent
 from customer_service_agent.config import get_settings
 from customer_service_agent.logging_config import configure_logging
-from customer_service_agent.model_factory import build_embedding_model
 from customer_service_agent.models import ChatResponse
 from customer_service_agent.rag.service import RAGService
 
@@ -38,7 +37,10 @@ def _build_parser() -> argparse.ArgumentParser:
 
     search_parser = subparsers.add_parser("rag-search", help="搜索 RAG 知识库")
     search_parser.add_argument("query")
-    search_parser.add_argument("--top-k", type=int, default=4)
+    search_parser.add_argument("--top-k", type=int, default=3, help="每路候选数量，默认各3条")
+    search_parser.add_argument(
+        "--force-web", action="store_true", help="本地证据不足时尝试MCP网页降级"
+    )
 
     serve_parser = subparsers.add_parser("serve", help="启动 FastAPI")
     serve_parser.add_argument("--host", default=None)
@@ -99,8 +101,8 @@ def _run(args: argparse.Namespace) -> None:
                     _print_response(response, show_trace=args.trace)
 
     if args.command == "rag-ingest":
-        service = RAGService(settings, build_embedding_model(settings))
-        result = service.ingest_directory(args.path, replace=not args.append)
+        with RAGService.from_settings(settings) as service:
+            result = service.ingest_directory(args.path, replace=not args.append)
         print(
             f"读取文档 {result.loaded_documents} 个，写入 chunk {result.indexed_chunks} 个，"
             f"当前总 chunk {result.total_chunks} 个。"
@@ -108,15 +110,21 @@ def _run(args: argparse.Namespace) -> None:
         return
 
     if args.command == "rag-search":
-        service = RAGService(settings, build_embedding_model(settings))
-        hits = service.search(args.query, top_k=args.top_k)
-        if not hits:
-            print("没有检索到相关内容。请先执行 rag-ingest。")
-            return
-        for index, hit in enumerate(hits, start=1):
-            source = hit.metadata.get("source", "unknown")
-            print(f"\n[{index}] score={hit.score:.3f} source={source}")
-            print(hit.content)
+        with RAGService.from_settings(settings) as service:
+            result = service.retrieve(args.query, top_k=args.top_k, force_web=args.force_web)
+        for label, hits in (
+            ("关键词", result.keyword_hits),
+            ("语义", result.semantic_hits),
+            ("网页", result.web_hits),
+        ):
+            print(f"\n{label}检索：{len(hits)}条")
+            for index, hit in enumerate(hits, start=1):
+                source = hit.metadata.get("source", "unknown")
+                print(f"[{index}] score={hit.score:.6f} source={source}\n{hit.content}")
+        if result.warnings:
+            print("\n检索提示：" + "；".join(result.warnings))
+        if not result.hits:
+            print("没有取得可用证据，请核对知识库或浏览器MCP配置。")
         return
 
     if args.command == "serve":
