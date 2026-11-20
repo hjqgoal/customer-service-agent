@@ -1,11 +1,11 @@
 # customer-service-agent：规范化智能客服 Agent 参考工程
 
-这是一个用于学习真实 Agent 工程边界的 LangChain 项目。它可以在本地完整运行，也明确标注了
-SQLite 教学实现与互联网生产部署之间的差距。
+这是一个真实 Agent 工程边界的 LangGraph 项目。它可以在本地完整运行，也明确标注了
+SQLite 与互联网生产部署之间的差距。
 
 默认运行 **Supervisor + 订单 Agent + 物流 Agent + 售后 Agent** 的协作模式，支持依赖调度、
 并行执行、失败降级和 SQLite 恢复。设置 `AGENT_MODE=single` 可以运行原版单 Agent。
-已读过原版的同学，请先看 [新版学习指南](docs/multi-agent-learning.md)。
+已读过原版的同学，请先看 [新版指南](docs/multi-agent-learning.md)。
 
 长期画像提炼、SQLite空间维护和独立排序模型的参数见[记忆与Rerank](docs/memory-and-rerank.md)。
 
