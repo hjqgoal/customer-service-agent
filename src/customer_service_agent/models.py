@@ -108,3 +108,7 @@ class RAGSearchResponse(BaseModel):
     web_hits: list[RAGHit] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     web_attempted: bool = False
+    rerank_status: Literal["disabled", "not_configured", "success", "failed", "no_candidates"] = (
+        "disabled"
+    )
+    ranking_method: Literal["original", "rrf", "model"] = "original"

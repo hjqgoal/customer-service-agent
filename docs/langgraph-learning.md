@@ -5,7 +5,7 @@
 
 ## 原项目的图藏在哪里
 
-入口是 [agent.py:134](/Users/jiaqihong/Desktop/python/codex_agent1/src/customer_service_agent/agent.py:134)：
+入口是 [agent.py](../src/customer_service_agent/agent.py#L144)：
 
 ```python
 self.graph = create_agent(
@@ -120,7 +120,7 @@ recursion_limit 不表示用户可以聊多少轮，也不是精确的工具调�
 历史压缩位于 graph.invoke 之前，不是图内的一个节点；它调用 get_state/update_state，
 把旧消息替换成累计摘要和近期消息。摘要作为 SystemMessage 真正写进了 State。
 
-动态画像提示词则不同：[动态 prompt 中间件](/Users/jiaqihong/Desktop/python/codex_agent1/src/customer_service_agent/agent.py:86)
+动态画像提示词则不同：[动态 prompt 中间件](../src/customer_service_agent/agent.py#L93)
 会在每次模型调用前读数据库，再拼接本次模型输入的系统消息。这一拼接不会默认写回 messages。
 所以“模型看到的所有内容”与“State.messages 中保存的所有内容”不完全相同。
 本项目的 dynamic_prompt 是 wrap_model_call 中间件，没有额外生成一个 profile 节点。
@@ -143,11 +143,10 @@ checkpoint 并非只在最终答复后保存一次。`get_state_history(config)`
 SQLite checkpoint 都真实运行。不读取 `.env`，数据路径全部指向临时目录，退出后自动清理。
 本例不是现有 Agent 的完整替代：没有复制业务中间件、会话互斥、历史压缩和全部工具语义。
 
-在项目根目录和已有 `my_demo1` 环境中运行：
+在项目根目录、已激活项目环境的终端中运行：
 
 ```bash
-cd /Users/jiaqihong/Desktop/python/codex_agent1
-conda activate my_demo1
+source .venv/bin/activate  # 或激活你自己的 conda 环境
 PYTHONPATH=src python -m examples.langgraph_walkthrough --mode original
 ```
 

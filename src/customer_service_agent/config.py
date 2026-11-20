@@ -70,6 +70,14 @@ class Settings(BaseSettings):
     memory_summary_enabled: bool = True
     memory_summary_max_chars: int = Field(default=4000, ge=500, le=20_000)
     memory_summary_input_max_chars: int = Field(default=20_000, ge=2000, le=100_000)
+    # 长期画像覆盖更新，不追加每一轮原始对话。
+    memory_profile_max_orders: int = Field(default=20, ge=1, le=20)
+    memory_profile_max_preferences: int = Field(default=10, ge=1, le=20)
+    memory_profile_summary_max_chars: int = Field(default=800, ge=100, le=1000)
+    memory_profile_max_bytes: int = Field(default=8192, ge=2048, le=65_536)
+    # 0表示不按年龄删除；清理必须显式执行维护命令。
+    memory_profile_retention_days: int = Field(default=0, ge=0, le=3650)
+    memory_checkpoint_keep_last: int = Field(default=20, ge=2, le=1000)
 
     # RecursiveCharacterTextSplitter measures characters unless a token length function is set.
     rag_chunk_size: int = Field(default=700, ge=100, le=10_000)
@@ -81,6 +89,20 @@ class Settings(BaseSettings):
     rag_semantic_min_score: float = Field(default=0.35, ge=-1.0, le=1.0)
     rag_local_timeout_seconds: float = Field(default=15.0, gt=0, le=120)
     rag_retrieval_workers: int = Field(default=4, ge=2, le=16)
+    # 独立排序模型，不复用聊天/embedding的接口地址或密钥。
+    rag_rerank_enabled: bool = True
+    rag_rerank_api_url: str | None = None
+    # dashscope：百炼原生 text-rerank 协议；jina：Jina/Cohere 兼容的 /rerank 协议，
+    # one-api、new-api 等 OpenAI-compatible 网关通常采用这种格式。
+    rag_rerank_api_format: Literal["dashscope", "jina"] = "dashscope"
+    rag_rerank_api_key: SecretStr | None = None
+    rag_rerank_model_name: str | None = None
+    rag_rerank_top_n: int = Field(default=3, ge=1, le=20)
+    rag_rerank_max_candidates: int = Field(default=20, ge=1, le=50)
+    rag_rerank_timeout_seconds: float = Field(default=10.0, gt=0, le=60)
+    rag_rerank_max_document_chars: int = Field(default=2000, ge=100, le=8000)
+    rag_rerank_min_score: float = Field(default=0.0, ge=0, le=1)
+    rag_rrf_k: int = Field(default=60, ge=1, le=1000)
     rag_web_fallback_enabled: bool = True
     rag_web_mcp_transport: Literal["stdio", "streamable_http"] = "stdio"
     rag_web_mcp_command: str | None = "npx"

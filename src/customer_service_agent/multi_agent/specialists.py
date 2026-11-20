@@ -10,19 +10,39 @@ from langchain_core.tools import BaseTool
 
 from customer_service_agent.config import Settings
 from customer_service_agent.memory import AgentContext, CustomerProfileRepository
-from customer_service_agent.multi_agent.prompts import SPECIALIST_PROMPTS, SPECIALIST_RULES
+from customer_service_agent.multi_agent.prompts import (
+    SPECIALIST_BASE_PROMPT,
+    SPECIALIST_PROMPTS,
+    SPECIALIST_RULES,
+    SPECIALIST_SKILLS,
+)
 from customer_service_agent.multi_agent.state import AgentName
-from customer_service_agent.prompts import build_system_prompt
 from customer_service_agent.rag.service import RAGService
+from customer_service_agent.skills import SkillRegistry
 from customer_service_agent.tools.after_sales_tool import build_after_sales_tools
 from customer_service_agent.tools.logistics_tool import build_logistics_tool
 from customer_service_agent.tools.order_tool import DEFAULT_ORDER_REPOSITORY
 from customer_service_agent.tools.policy_tool import build_policy_lookup_tool
 from customer_service_agent.tools.profile_tool import build_customer_profile_tools
 from customer_service_agent.tools.rag_tool import build_rag_search_tool
-from customer_service_agent.tools.skill_tool import build_skill_loader_tool
 
 WRITE_TOOLS = {"submit_after_sales_request", "create_support_ticket"}
+
+
+def build_specialist_prompt(
+    settings: Settings, name: AgentName, registry: SkillRegistry | None = None
+) -> str:
+    """基础规则 + 角色职责 + 任务规则 + 本角色完整 SOP。"""
+
+    skills = registry or SkillRegistry()
+    sops = "\n\n---\n\n".join(
+        skills.get(skill_id).to_prompt_text() for skill_id in SPECIALIST_SKILLS[name]
+    )
+    base = SPECIALIST_BASE_PROMPT.format(
+        company_name=settings.company_name,
+        support_email=settings.support_email,
+    )
+    return f"{base}\n\n{SPECIALIST_PROMPTS[name]}\n{SPECIALIST_RULES}\n\n本角色 SOP：\n\n{sops}"
 
 
 def build_specialist_tools(
@@ -45,11 +65,17 @@ def build_specialist_tools(
             ensure_ascii=False,
         )
 
-    shared = [build_skill_loader_tool(), build_rag_search_tool(rag)]
+    # SOP 已写进各自的系统提示词，专业 Agent 不再需要 load_skill_instructions。
+    # 订单/物流事实只能来自各自的查询工具：知识库里也有编号相近的演示订单和运单，
+    # 让这两个 Agent 检索知识库会把另一笔订单的商品和轨迹混进来。知识库只留给售后查政策。
     return {
-        "order": [lookup_order, *shared, *build_customer_profile_tools(profiles)],
-        "logistics": [build_logistics_tool(), *shared],
-        "after_sales": [build_policy_lookup_tool(), *shared, *build_after_sales_tools(settings)],
+        "order": [lookup_order, *build_customer_profile_tools(profiles)],
+        "logistics": [build_logistics_tool()],
+        "after_sales": [
+            build_policy_lookup_tool(),
+            build_rag_search_tool(rag),
+            *build_after_sales_tools(settings),
+        ],
     }
 
 
@@ -57,7 +83,9 @@ def build_specialists(
     settings: Settings, model: BaseChatModel, tools_by_agent: dict[AgentName, list[BaseTool]]
 ) -> dict:
     agents = {}
-    for name, role_prompt in SPECIALIST_PROMPTS.items():
+    registry = SkillRegistry()
+    for name in SPECIALIST_PROMPTS:
+        system_prompt = build_specialist_prompt(settings, name, registry)
         kinds = ("query", "action") if name == "after_sales" else ("query",)
         for kind in kinds:
             tools = [
@@ -69,7 +97,7 @@ def build_specialists(
                 model=model,
                 tools=tools,
                 context_schema=AgentContext,
-                system_prompt=f"{build_system_prompt(settings)}\n\n{role_prompt}\n{SPECIALIST_RULES}",
+                system_prompt=system_prompt,
                 # 父图保存任务结果；子 Agent 每次只接收本任务所需的上下文。
                 checkpointer=False,
                 name=f"{name}_{kind}",

@@ -1,6 +1,9 @@
 import asyncio
+import logging
 import sqlite3
 
+import httpx
+import openai
 import pytest
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import ValidationError
@@ -12,6 +15,7 @@ from customer_service_agent.multi_agent.request_store import (
     SessionOwnershipError,
 )
 from customer_service_agent.multi_agent.state import TaskPlan
+from customer_service_agent.multi_agent.workflow import error_details
 from tests.multi_fakes import CollaborationModel, task
 
 
@@ -117,6 +121,30 @@ def test_invalid_plan_has_bounded_repair_and_clear_failure(multi_settings):
     assert response.status == "failed"
     assert model.plan_calls == 2
     assert not model.attempts
+
+
+def test_provider_failure_logs_status_and_error_code(multi_settings, caplog):
+    class ArrearsModel(CollaborationModel):
+        async def _agenerate(self, messages, stop=None, run_manager=None, **kwargs):
+            if "只生成 JSON 任务计划" in str(messages[0].content):
+                request = httpx.Request("POST", "https://model.example.test/chat/completions")
+                raise openai.BadRequestError(
+                    "Access denied",
+                    response=httpx.Response(400, request=request),
+                    body={"code": "Arrearage", "message": "账户欠费明细"},
+                )
+            return await super()._agenerate(messages, stop, run_manager, **kwargs)
+
+    caplog.set_level(logging.WARNING, logger="customer_service_agent.multi_agent.workflow")
+    with build(multi_settings, ArrearsModel()) as agent:
+        response = agent.ask("查订单", request_id="arrears")
+    assert response.status == "failed"
+    assert (
+        "request_id=arrears error_type=BadRequestError status=400 provider_code=Arrearage"
+        in caplog.text
+    )
+    assert "账户欠费明细" not in caplog.text  # 不记录供应商响应正文
+    assert error_details(TimeoutError()) == "status=- provider_code=-"
 
 
 def test_synthesis_failure_returns_worker_results(multi_settings):

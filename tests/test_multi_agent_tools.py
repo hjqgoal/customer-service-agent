@@ -1,9 +1,14 @@
 import json
 import sqlite3
 
+from pydantic import Field
+
 from customer_service_agent.agent import build_customer_service_agent
 from customer_service_agent.memory import CustomerProfileRepository
-from customer_service_agent.multi_agent.specialists import build_specialist_tools
+from customer_service_agent.multi_agent.specialists import (
+    build_specialist_prompt,
+    build_specialist_tools,
+)
 from customer_service_agent.rag.service import RAGService
 from tests.fakes import FakeEmbeddings
 from tests.multi_fakes import CollaborationModel, task
@@ -106,6 +111,44 @@ def test_profile_updates_work_inside_specialist(test_settings):
         profile = agent.get_customer_profile("customer-1")
     assert profile.customer_name == "张三"
     assert profile.preferences == ["短信联系"]
+
+
+def test_specialists_receive_role_sop_without_skill_loader_round_trip(test_settings):
+    class PromptRecordingModel(CollaborationModel):
+        worker_prompts: list[str] = Field(default_factory=list)
+
+        async def _agenerate(self, messages, stop=None, run_manager=None, **kwargs):
+            if "本角色 SOP" in str(messages[0].content):
+                self.worker_prompts.append(str(messages[0].content))
+            return await super()._agenerate(messages, stop, run_manager, **kwargs)
+
+    profiles = CustomerProfileRepository(test_settings.profile_db_file)
+    rag = RAGService(test_settings, FakeEmbeddings())
+    tools = build_specialist_tools(test_settings, rag, profiles)
+    assert "load_skill_instructions" not in {t.name for group in tools.values() for t in group}
+
+    model = PromptRecordingModel(plan={"tasks": [task("order")]})
+    with build(test_settings, model) as agent:
+        agent.ask("查订单 ORDER-1001")
+    assert model.worker_prompts
+    order_prompt = model.worker_prompts[0]
+    assert "# 订单查询" in order_prompt and "## 执行步骤" in order_prompt
+    # 只附本角色 SOP，不把其他角色的流程塞进提示词。
+    assert "# 物流查询" not in order_prompt
+    after_sales_prompt = build_specialist_prompt(test_settings, "after_sales")
+    assert "# 退款与售后" in after_sales_prompt and "# 知识库问答" in after_sales_prompt
+
+
+def test_only_after_sales_can_search_knowledge_base(test_settings):
+    # 知识库里有编号相近的演示订单/运单，订单与物流事实只能来自各自的查询工具。
+    profiles = CustomerProfileRepository(test_settings.profile_db_file)
+    tools = build_specialist_tools(
+        test_settings, RAGService(test_settings, FakeEmbeddings()), profiles
+    )
+    names = {agent: {t.name for t in group} for agent, group in tools.items()}
+    assert names["order"] == {"lookup_order", "save_customer_profile"}
+    assert names["logistics"] == {"lookup_logistics"}
+    assert "search_knowledge_base" in names["after_sales"]
 
 
 def test_ticket_operation_key_prevents_duplicate_writes(test_settings):

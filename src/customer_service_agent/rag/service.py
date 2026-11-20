@@ -16,6 +16,11 @@ from customer_service_agent.config import Settings
 from customer_service_agent.model_factory import ModelConfigError, build_embedding_model
 from customer_service_agent.models import RAGHit, RAGIngestResponse, RAGSearchResponse
 from customer_service_agent.rag.loader import load_documents, split_documents
+from customer_service_agent.rag.reranker import (
+    DashScopeReranker,
+    RerankError,
+    reciprocal_rank_fusion,
+)
 from customer_service_agent.rag.sqlite_vector_store import SQLiteVectorStore
 from customer_service_agent.rag.web_fallback import MCPBrowserSearch, WebSearchError
 
@@ -48,6 +53,7 @@ class RAGService:
         embeddings: Embeddings | None,
         *,
         web_search: WebSearch | None = None,
+        reranker: DashScopeReranker | None = None,
     ) -> None:
         self.settings = settings
         self.store = SQLiteVectorStore(
@@ -56,6 +62,7 @@ class RAGService:
             busy_timeout_seconds=settings.sqlite_busy_timeout_seconds,
         )
         self.web_search = web_search or MCPBrowserSearch(settings)
+        self.reranker = reranker or DashScopeReranker(settings)
         self._executor = ThreadPoolExecutor(
             max_workers=settings.rag_retrieval_workers, thread_name_prefix="rag-retrieval"
         )
@@ -153,6 +160,28 @@ class RAGService:
             else:
                 report.warnings.append("web_disabled")
         report.hits = [*local_hits, *report.web_hits]
+        if self.settings.rag_rerank_enabled:
+            candidates = reciprocal_rank_fusion(report.hits, k=self.settings.rag_rrf_k)
+            candidates = candidates[: self.settings.rag_rerank_max_candidates]
+            report.ranking_method = "rrf"
+            report.hits = candidates[: self.settings.rag_rerank_top_n]
+            if not candidates:
+                report.rerank_status = "no_candidates"
+            else:
+                try:
+                    report.hits = self.reranker.rerank(query, candidates)
+                    report.rerank_status = "success"
+                    report.ranking_method = "model"
+                    if not report.hits:
+                        report.warnings.append("rerank_no_relevant_evidence")
+                except RerankError as exc:
+                    report.rerank_status = (
+                        "not_configured" if str(exc) == "rerank_not_configured" else "failed"
+                    )
+                    report.warnings.append(str(exc))
+                except Exception:
+                    report.rerank_status = "failed"
+                    report.warnings.append("rerank_unavailable")
         return report
 
     def search(self, query: str, *, top_k: int | None = None) -> list[RAGHit]:

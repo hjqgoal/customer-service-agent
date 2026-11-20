@@ -21,6 +21,7 @@ from customer_service_agent.multi_agent.request_store import RequestStore
 from customer_service_agent.multi_agent.specialists import build_specialists
 from customer_service_agent.multi_agent.state import TaskResult
 from customer_service_agent.multi_agent.workflow import CollaborationWorkflow
+from customer_service_agent.rag.service import RAGService
 
 
 class MultiAgentCustomerService:
@@ -30,10 +31,14 @@ class MultiAgentCustomerService:
         model,
         tools_by_agent: dict,
         profile_repository: CustomerProfileRepository,
+        *,
+        rag_service: RAGService | None = None,
     ) -> None:
         self.settings = settings
         self.llm = model
         self.profile_repository = profile_repository
+        # 由工厂创建的 RAG 服务归本服务所有，close 时一并释放；外部注入的工具自行管理。
+        self.rag_service = rag_service
         self.requests = RequestStore(
             settings.multi_agent_db_file, settings.sqlite_busy_timeout_seconds
         )
@@ -50,6 +55,8 @@ class MultiAgentCustomerService:
             self.runner.submit(self._initialize(tools_by_agent)).result()
         except BaseException:
             self.runner.close()
+            if self.rag_service is not None:
+                self.rag_service.close()
             raise
 
     async def _initialize(self, tools_by_agent: dict) -> None:
@@ -221,6 +228,8 @@ class MultiAgentCustomerService:
                 self.runner.submit(self._shutdown()).result()
             finally:
                 self.runner.close()
+                if self.rag_service is not None:
+                    self.rag_service.close()
 
     def __enter__(self):
         return self

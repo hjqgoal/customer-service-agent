@@ -11,8 +11,13 @@ htmlcov/
 !.env.example
 data/*.sqlite3
 data/*.sqlite3-*
+data/*.before-maintenance-*.bak
 *.log
 dist/
 build/
 *.egg-info/
 data/mcp_npm_cache/
+
+# 个人学习/面试准备材料与导出文件，只保留在本地
+output/
+docs/agent-interview-*.md

@@ -10,6 +10,7 @@ def test_settings(tmp_path) -> Settings:
     kb_dir = tmp_path / "knowledge_base"
     kb_dir.mkdir()
     return Settings(
+        rag_rerank_enabled=False,
         _env_file=None,
         app_env="test",
         agent_mode="single",

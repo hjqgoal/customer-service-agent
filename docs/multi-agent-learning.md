@@ -9,8 +9,7 @@
 新版默认 `AGENT_MODE=multi`，可在 `.env` 中显式加入。不要用 `.env.example` 覆盖已有密钥。
 
 ```bash
-cd /Users/jiaqihong/Desktop/python/codex_agent1
-conda activate my_demo1
+source .venv/bin/activate  # 或激活你自己的 conda 环境
 python -m pip install -e ".[dev]"
 python -m pytest -q
 python -m customer_service_agent.cli ask "查询 ORDER-1001 的订单和物流，并说明退货条件" --session multi-demo --user student --trace
@@ -50,7 +49,7 @@ LangGraph 按 superstep 同步推进：同一波次的并行任务结束后，�
 | --- | --- | --- |
 | `multi_agent/state.py` | 任务 schema、DAG 校验、reducer | 如何防止未知依赖、循环和结果覆盖？ |
 | `multi_agent/prompts.py` | Supervisor 的规划和汇总职责 | 为什么模型提出计划后还要由程序校验？ |
-| `multi_agent/specialists.py` | 专业分工和工具权限 | 为什么查询任务没有退款申请工具？ |
+| `multi_agent/specialists.py` | 专业分工、工具权限、SOP 直接注入 | 为什么查询任务没有退款申请工具？为什么专业 Agent 不调用 `load_skill_instructions`？ |
 | `multi_agent/workflow.py` | StateGraph、Send、并发、重试、结果汇总 | 成功/失败任务怎样决定后续任务能否运行？ |
 | `multi_agent/service.py` | 同步/异步入口、会话锁、恢复 | 为什么同会话的用户请求要串行？ |
 | `multi_agent/request_store.py` | 请求幂等和持久回执 | request_id 和 thread_id 有什么不同？ |

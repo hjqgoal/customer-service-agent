@@ -1,14 +1,17 @@
 """Command-line interface for development and operations."""
 
-import argparse
-import sys
+import argparse  # 用于解析命令行参数
+import json
+import sys  # 把错误信息输出到标准错误流
 import uuid
 
-import uvicorn
+import uvicorn  # 用于启动 FastAPI 服务
 
 from customer_service_agent.agent import build_customer_service_agent
 from customer_service_agent.config import get_settings
 from customer_service_agent.logging_config import configure_logging
+from customer_service_agent.memory.consolidation import ProfileMemoryPolicy
+from customer_service_agent.memory.maintenance import maintain_database
 from customer_service_agent.models import ChatResponse
 from customer_service_agent.rag.service import RAGService
 
@@ -16,8 +19,10 @@ from customer_service_agent.rag.service import RAGService
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="customer-agent")
     parser.add_argument("--debug", action="store_true", help="发生错误时打印完整 traceback")
+    # 这表示程序拥有多个子命令。存在args.command
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    # ask子命令
     ask_parser = subparsers.add_parser("ask", help="单轮提问")
     ask_parser.add_argument("message")
     ask_parser.add_argument("--session", default="default")
@@ -41,6 +46,10 @@ def _build_parser() -> argparse.ArgumentParser:
     search_parser.add_argument(
         "--force-web", action="store_true", help="本地证据不足时尝试MCP网页降级"
     )
+
+    maintenance = subparsers.add_parser("memory-maintain", help="停服后维护记忆，默认仅预览")
+    maintenance.add_argument("--apply", action="store_true", help="先自动备份，再执行压缩和清理")
+    maintenance.add_argument("--vacuum", action="store_true", help="配合--apply回收数据库空闲页")
 
     serve_parser = subparsers.add_parser("serve", help="启动 FastAPI")
     serve_parser.add_argument("--host", default=None)
@@ -66,7 +75,34 @@ def _print_response(response: ChatResponse, *, show_trace: bool) -> None:
 
 def _run(args: argparse.Namespace) -> None:
     settings = get_settings()
-    configure_logging(settings)
+    configure_logging(settings)  # 配置日志
+
+    if args.command == "memory-maintain":
+        if args.vacuum and not args.apply:
+            raise ValueError("--vacuum必须配合--apply；请先停止所有Agent服务。")
+        reports = []
+        visited = set()
+        for path, kind in (
+            (settings.profile_db_file, "profiles"),
+            (settings.memory_db_file, "checkpoints"),
+            (settings.multi_agent_db_file, "checkpoints"),
+        ):
+            if path.resolve() in visited:
+                continue
+            visited.add(path.resolve())
+            reports.append(
+                maintain_database(
+                    path,
+                    kind=kind,
+                    policy=ProfileMemoryPolicy.from_settings(settings),
+                    keep_last=settings.memory_checkpoint_keep_last,
+                    retention_days=settings.memory_profile_retention_days,
+                    apply=args.apply,
+                    vacuum=args.vacuum,
+                )
+            )
+        print(json.dumps(reports, ensure_ascii=False, indent=2))
+        return
 
     if args.command == "ask":
         request_id = args.request_id or uuid.uuid4().hex
@@ -89,7 +125,7 @@ def _run(args: argparse.Namespace) -> None:
             print("进入智能客服 CLI。输入 exit 或 quit 退出。")
             while True:
                 message = input("你：").strip()
-                if message.lower() in {"exit", "quit"}:
+                if message.lower() in {"exit", "quit"}:  # lower 转换成小写
                     return
                 if message:
                     response = agent.ask(
@@ -121,6 +157,12 @@ def _run(args: argparse.Namespace) -> None:
             for index, hit in enumerate(hits, start=1):
                 source = hit.metadata.get("source", "unknown")
                 print(f"[{index}] score={hit.score:.6f} source={source}\n{hit.content}")
+        print(f"\n排序状态：{result.rerank_status}；实际排序：{result.ranking_method}")
+        for index, hit in enumerate(result.hits, 1):
+            print(
+                f"最终证据[{index}] rerank_score={hit.metadata.get('rerank_score', '-')} "
+                f"source={hit.metadata.get('source', 'unknown')}\n{hit.content}"
+            )
         if result.warnings:
             print("\n检索提示：" + "；".join(result.warnings))
         if not result.hits:

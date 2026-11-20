@@ -118,6 +118,13 @@ with TemporaryDirectory(prefix="agent-eval-") as directory:
 记录命中文档ID、上下文、回答，再对照每例 `policy:P-xx` 证据检查召回和忠实度。
 普通规则工具查询正确，不等于已经验证了向量检索质量。
 
+## 用脚本执行（真实模型，会计费）
+
+`python -m customer_service_agent.evaluation.runner` 按下面的规则自动执行：每例独立临时库、
+夹具只读工具、故障按 injection 在执行边界注入，评委模型逐条核对 expected/forbidden，
+再叠加写库审计、越权泄露等程序断言。`--cases ORD,LOG-001` 只跑部分案例，`--retrieval-only`
+只做检索评测，`--merge` 汇总多次运行。首次结果见 `docs/evaluation-2026-11-04.md`。
+
 ## 怎样执行和评分
 
 1. 每例使用新的会话和独立运行目录，多轮案例内部连续发送、等待每轮回复；不要批量拼成一句话。

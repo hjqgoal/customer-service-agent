@@ -395,7 +395,7 @@ class ConversationCompactor:
                     logger.exception(
                         "conversation_summary_merge_failed; using structured merge fallback"
                     )
-                    merged = _merge_summaries(batch)    #模型合并失败时使用确定性合并
+                    merged = _merge_summaries(batch)  # 模型合并失败时使用确定性合并
                 reduced.append(self._fit_summary(merged, max_chars=intermediate_limit))
 
             if len(reduced) >= len(pending):

@@ -1,4 +1,4 @@
-# codex_agent1：规范化智能客服 Agent 参考工程
+# customer-service-agent：规范化智能客服 Agent 参考工程
 
 这是一个用于学习真实 Agent 工程边界的 LangChain 项目。它可以在本地完整运行，也明确标注了
 SQLite 教学实现与互联网生产部署之间的差距。
@@ -7,15 +7,19 @@ SQLite 教学实现与互联网生产部署之间的差距。
 并行执行、失败降级和 SQLite 恢复。设置 `AGENT_MODE=single` 可以运行原版单 Agent。
 已读过原版的同学，请先看 [新版学习指南](docs/multi-agent-learning.md)。
 
+长期画像提炼、SQLite空间维护和独立排序模型的参数见[记忆与Rerank](docs/memory-and-rerank.md)。
+
 ## 核心模块
 
 - LangChain 1.x `create_agent`：工具调用 Agent，底层运行在 LangGraph。
 - 多 Agent：外层 StateGraph + Send 调度，专业 Agent 以最小工具权限运行。
 - LangGraph SQLite checkpointer：按 `thread_id` 持久化短期会话状态。
 - 三层记忆：保留最近 N 轮、旧历史累计摘要、按 `user_id` 保存结构化客户画像。
-- Markdown Skills：系统提示词只加载技能目录，完整 SOP 通过工具按需读取。
-- Tools：订单查询、政策查询、工单创建、知识库检索和 Skill 加载。
-- RAG：文档加载、字符切分、embedding、原子索引替换、哈希去重、相似度检索。
+- Markdown Skills：单 Agent 只加载技能目录、按需读取 SOP；专业 Agent 直接带上本角色 SOP。
+- Tools：订单、物流、政策查询，模拟售后申请与工单，知识库检索和 Skill 加载。
+- RAG：原子索引替换、哈希去重、BM25 + 向量混合检索、Rerank（DashScope / Jina 兼容协议）、
+  浏览器 MCP 网页降级。
+- 评测：60 例电商客服案例集、只读夹具库、真实模型评测脚本与记录。
 - FastAPI：聊天、健康检查、就绪检查、RAG 管理和稳定错误响应。
 - CLI / MCP：本地调试和外部工具协议入口。
 - 模拟售后：调用方确认、幂等申请和请求回执；不执行真实退款。
@@ -23,11 +27,13 @@ SQLite 教学实现与互联网生产部署之间的差距。
 
 ## 安装
 
-推荐使用独立环境：
+需要 Python 3.11 及以上，推荐使用独立环境：
 
 ```bash
-cd /Users/jiaqihong/Desktop/python/codex_agent1
-conda activate my_demo1
+git clone https://github.com/hjqgoal/customer-service-agent.git
+cd customer-service-agent
+python -m venv .venv
+source .venv/bin/activate  # 或激活你自己的 conda 环境
 python -m pip install -e ".[dev]"
 python -m pip check
 ```
@@ -202,13 +208,44 @@ curl -X POST http://127.0.0.1:8000/rag/ingest \
 ```text
 skills/
   order_query/SKILL.md
+  logistics_query/SKILL.md
   refund_after_sales/SKILL.md
   knowledge_base_qa/SKILL.md
   human_handoff/SKILL.md
 ```
 
-`SKILL.md` front matter 由 `yaml.safe_load` 解析并校验。Agent 初始 prompt 只包含名称、描述和工具
-目录；需要执行技能时调用 `load_skill_instructions` 加载完整 SOP。
+`SKILL.md` front matter 由 `yaml.safe_load` 解析并校验。单 Agent 的初始 prompt 只包含名称、描述和
+工具目录，需要执行技能时调用 `load_skill_instructions` 加载完整 SOP。多 Agent 中订单、物流、售后
+Agent 的领域固定，构建时直接把本角色 SOP 写进系统提示词，省掉每个任务一次加载往返
+（见 `multi_agent/specialists.py`）。
+
+## 评测
+
+`evals/` 是 60 例电商客服评测集，覆盖订单、物流、政策、多轮、安全、故障六类，配套只读夹具库。
+离线校验不调用模型：
+
+```bash
+python -m customer_service_agent.evaluation.cli validate
+```
+
+`python -m customer_service_agent.evaluation.runner` 用真实模型逐例执行并判分，会产生模型费用。
+第一次真实评测记录见 [docs/evaluation-2026-11-04.md](docs/evaluation-2026-11-04.md)：已执行 31 例、
+通过 30 例；政策、多轮、安全三类执行得还不够，不能据此评价这三类能力。
+
+## 文档
+
+| 文档 | 内容 |
+| --- | --- |
+| [docs/multi-agent-learning.md](docs/multi-agent-learning.md) | 从单 Agent 读到协作系统：状态、调度、恢复、模拟售后 |
+| [docs/architecture.md](docs/architecture.md) | 架构总览 |
+| [docs/langgraph-learning.md](docs/langgraph-learning.md) | 从这个客服项目学 LangGraph |
+| [docs/hybrid-rag.md](docs/hybrid-rag.md) | 混合 RAG 与浏览器 MCP 降级 |
+| [docs/memory-and-rerank.md](docs/memory-and-rerank.md) | 长期记忆、存储维护与 Rerank |
+| [docs/business-lab.md](docs/business-lab.md) | 业务知识库与长期记忆实测 |
+| [docs/database-overview.md](docs/database-overview.md) | 各 SQLite 数据库存了什么 |
+| [evals/README.md](evals/README.md) | 评测集说明与执行方式 |
+| [docs/evaluation-2026-11-04.md](docs/evaluation-2026-11-04.md) | 真实模型评测记录 |
+| [docs/production-readiness.md](docs/production-readiness.md) | 上线前仍需完成的工作 |
 
 ## 推荐阅读顺序
 
@@ -218,9 +255,10 @@ skills/
 4. `memory/compaction.py`：最近 N 轮与旧历史累计摘要。
 5. `memory/profile.py` 与 `tools/profile_tool.py`：结构化长期记忆和运行时身份注入。
 6. `skills/loader.py` 与 `tools/skill_tool.py`：渐进式 Skill 加载。
-7. `rag/`：原子入库、去重和检索。
-8. `agent.py`：动态 prompt、`create_agent` 装配与三层记忆编排。
-9. `api.py`：依赖注入、错误处理、管理接口保护。
-10. `tests/`：如何在不访问真实模型的情况下测试 Agent。
+7. `rag/`：原子入库、去重、混合检索与 Rerank。
+8. `agent.py`：动态 prompt、`create_agent` 装配、三层记忆编排和按模式选择服务的工厂。
+9. `multi_agent/`：按 `state` → `prompts` → `specialists` → `workflow` → `service` 阅读。
+10. `api.py`：依赖注入、错误处理、管理接口保护。
+11. `tests/`：如何在不访问真实模型的情况下测试 Agent。
 
 生产部署前仍需完成的工作见 `docs/production-readiness.md`。

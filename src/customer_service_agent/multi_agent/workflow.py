@@ -39,6 +39,18 @@ TRANSIENT_ERRORS = (
 )
 
 
+def error_details(exc: BaseException) -> str:
+    """模型服务异常的诊断字段：HTTP 状态码和服务商错误码。
+
+    欠费（Arrearage）、余额不足（402）、密钥无效（401）这类问题只看异常类型分辨不出来。
+    不记录响应正文，避免把用户输入或供应商返回的敏感内容写进日志。
+    """
+
+    status = getattr(exc, "status_code", None)
+    code = getattr(exc, "code", None)
+    return f"status={status or '-'} provider_code={str(code)[:64] if code else '-'}"
+
+
 class CollaborationWorkflow:
     def __init__(
         self,
@@ -90,9 +102,10 @@ class CollaborationWorkflow:
                 error_code = "invalid_plan"
             except Exception as exc:
                 logger.warning(
-                    "supervisor_plan_failed request_id=%s error_type=%s",
+                    "supervisor_plan_failed request_id=%s error_type=%s %s",
                     context.request_id,
                     type(exc).__name__,
+                    error_details(exc),
                 )
                 error_code = "supervisor_unavailable"
                 break
@@ -201,11 +214,12 @@ class CollaborationWorkflow:
             except Exception as exc:
                 error_code = "timeout" if isinstance(exc, TimeoutError) else "agent_error"
                 logger.warning(
-                    "worker_failed request_id=%s task=%s attempt=%s error_type=%s",
+                    "worker_failed request_id=%s task=%s attempt=%s error_type=%s %s",
                     context.request_id,
                     task.task_id,
                     attempt,
                     type(exc).__name__,
+                    error_details(exc),
                 )
                 if (
                     not isinstance(exc, TRANSIENT_ERRORS)
@@ -222,7 +236,7 @@ class CollaborationWorkflow:
         )
         return {"results": {task.task_id: output.model_dump()}}
 
-    async def _summarize(self, state: WorkflowState) -> dict:
+    async def _summarize(self, state: WorkflowState, runtime: Runtime[AgentContext]) -> dict:
         if state["planning_error"]:
             return {
                 "messages": [AIMessage(content="暂时无法安排客服任务，请稍后重试或联系人工客服。")],
@@ -262,7 +276,12 @@ class CollaborationWorkflow:
             if not answer:
                 raise ValueError("empty supervisor answer")
         except Exception as exc:
-            logger.warning("supervisor_summary_failed error_type=%s", type(exc).__name__)
+            logger.warning(
+                "supervisor_summary_failed request_id=%s error_type=%s %s",
+                runtime.context.request_id,
+                type(exc).__name__,
+                error_details(exc),
+            )
             answer = "\n\n".join(r.answer for r in successful) or "暂时无法完成处理，请稍后重试。"
             answer = "自动汇总暂时不可用，以下为已获得的结果：\n" + answer
             status = "partial" if successful else "failed"
